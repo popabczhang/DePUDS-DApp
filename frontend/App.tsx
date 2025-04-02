@@ -43,7 +43,7 @@ function App(): React.JSX.Element {
         }}>
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Wallet" component={WalletScreen} />
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Urban Development DApp' }} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Prosocial Urban DApp' }} />
         <Stack.Screen name="Projects" component={ProjectsScreen} options={{ title: 'Development Projects' }} />
         <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen} options={{ title: 'Project Details' }} />
         <Stack.Screen name="Voting" component={VotingScreen} options={{ title: 'Vote on Proposal' }} />
