@@ -12,13 +12,14 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 // Import screens
-import HomeScreen from './src/screens/HomeScreen';
-import ProjectsScreen from './src/screens/ProjectsScreen';
-import ProjectDetailScreen from './src/screens/ProjectDetailScreen';
-import VotingScreen from './src/screens/VotingScreen';
-import ProfileScreen from './src/screens/ProfileScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import WalletScreen from './src/screens/WalletScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import VotingScreen from './src/screens/VotingScreen';
+import MapScreen from './src/screens/MapScreen';
+// import HomeScreen from './src/screens/HomeScreen';
+// import ProjectsScreen from './src/screens/ProjectsScreen';
+// import ProjectDetailScreen from './src/screens/ProjectDetailScreen';
 
 // Define the navigation types
 type RootStackParamList = {
@@ -29,51 +30,45 @@ type RootStackParamList = {
   Profile: undefined;
   Login: undefined;
   Wallet: undefined;
+  Map: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-function App(): React.JSX.Element {
+const App = () => {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <StatusBar barStyle="dark-content" />
-        <Stack.Navigator
-          initialRouteName="Profile"
-          screenOptions={{
-            headerShown: false,
-          }}>
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Wallet" component={WalletScreen} />
+        <Stack.Navigator initialRouteName="Login">
           <Stack.Screen
-            name="Home"
-            component={HomeScreen}
-            options={{title: 'Prosocial Urban DApp'}}
+            name="Login"
+            component={LoginScreen}
+            options={{headerShown: false}}
           />
           <Stack.Screen
-            name="Projects"
-            component={ProjectsScreen}
-            options={{title: 'Development Projects'}}
-          />
-          <Stack.Screen
-            name="ProjectDetail"
-            component={ProjectDetailScreen}
-            options={{title: 'Project Details'}}
-          />
-          <Stack.Screen
-            name="Voting"
-            component={VotingScreen}
-            options={{title: 'Vote on Proposal'}}
+            name="Wallet"
+            component={WalletScreen}
+            options={{headerShown: false}}
           />
           <Stack.Screen
             name="Profile"
             component={ProfileScreen}
-            options={{title: 'My Profile'}}
+            options={{headerShown: false}}
+          />
+          <Stack.Screen
+            name="Voting"
+            component={VotingScreen}
+            options={{headerShown: false}}
+          />
+          <Stack.Screen
+            name="Map"
+            component={MapScreen}
+            options={{headerShown: false}}
           />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
   );
-}
+};
 
 export default App;

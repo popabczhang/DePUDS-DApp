@@ -1,178 +1,188 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Button, VoteButton } from '../components/index';
-import globalStyles from '../assets/styles/global';
-import { fetchData, postData } from '../services/api';
-import { getAccounts } from '../services/web3';
-import { Proposal } from '../types';
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  TextInput,
+} from 'react-native';
+import Slider from '@react-native-community/slider';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {NavigationProp} from '@react-navigation/native';
 
 type RootStackParamList = {
-  Home: undefined;
-  Projects: undefined;
-  ProjectDetail: { projectId: string };
-  Voting: { proposalId: string };
-  Profile: undefined;
+  Voting: undefined;
+  Map: undefined;
+  // Add other screens as needed
 };
 
-type VotingScreenProps = NativeStackScreenProps<RootStackParamList, 'Voting'>;
+type VotingScreenProps = {
+  navigation: NavigationProp<RootStackParamList>;
+};
 
-const VotingScreen = ({ route, navigation }: VotingScreenProps) => {
-  const { proposalId } = route.params;
-  const [proposal, setProposal] = useState<Proposal | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedOption, setSelectedOption] = useState<string>('');
-  const [submitting, setSubmitting] = useState(false);
-  const [account, setAccount] = useState<string | null>(null);
-  const [hasVoted, setHasVoted] = useState(false);
+const VotingScreen = ({navigation}: VotingScreenProps) => {
+  const [remainingVotes, setRemainingVotes] = useState(100);
+  const [votes, setVotes] = useState({
+    'Affordable Housing': 0,
+    'Mid-Career Housing': 0,
+    'Executive Housing': 0,
+    'Senior Housing': 0,
+    'Coworking Office': 0,
+    'Headquarter Office': 0,
+    Pharmacy: 0,
+    'Healthcare Center': 0,
+    'Grocery/Market': 0,
+    'Retail Store': 0,
+    Restaurant: 0,
+    'Daycare Center': 0,
+    'Career Training': 0,
+    'Recreation & Fitness': 0,
+    'Library/Cultural/Arts': 0,
+    'Green Space': 0,
+  });
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        // Get connected account
-        const accounts = await getAccounts();
-        if (accounts && accounts.length > 0) {
-          setAccount(accounts[0]);
-        }
-        
-        // Fetch proposal data
-        const proposalData = await fetchData(`proposals/${proposalId}`);
-        setProposal(Array.isArray(proposalData) ? proposalData[0] : proposalData);
-        
-        // Check if user has already voted
-        if (accounts && accounts.length > 0) {
-          const userData = await fetchData(`users/${accounts[0]}`);
-          const user = Array.isArray(userData) ? userData[0] : userData;
-          setHasVoted(user?.votedProposals?.includes(proposalId) || false);
-        }
-      } catch (error) {
-        console.error('Error initializing voting screen:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    init();
-  }, [proposalId]);
+    const total = Object.values(votes).reduce(
+      (sum, current) => sum + current,
+      0,
+    );
+    setRemainingVotes(100 - total);
+  }, [votes]);
 
-  const handleVote = async () => {
-    if (!selectedOption || !account) return;
-    
-    setSubmitting(true);
-    try {
-      await postData('votes', {
-        proposalId,
-        option: selectedOption,
-        address: account
-      });
-      
-      Alert.alert('Success', 'Your vote has been recorded!');
-      navigation.goBack();
-    } catch (error) {
-      console.error('Error submitting vote:', error);
-      Alert.alert('Error', 'Failed to submit your vote. Please try again.');
-    } finally {
-      setSubmitting(false);
+  const handleVoteChange = (
+    category: keyof typeof votes,
+    value: string | number,
+  ) => {
+    // Convert string to number
+    const newValue = typeof value === 'string' ? parseInt(value) || 0 : value;
+
+    // Calculate the difference
+    const currentValue = votes[category] || 0;
+    const difference = newValue - currentValue;
+
+    // Check if we have enough remaining votes
+    if (remainingVotes - difference < 0) {
+      Alert.alert('Vote Limit Reached', 'You have used all your 100 votes.');
+      return;
     }
+
+    // Update votes
+    setVotes({
+      ...votes,
+      [category]: newValue,
+    });
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007bff" />
-      </View>
+  const handleResetVotes = () => {
+    setVotes(
+      Object.keys(votes).reduce(
+        (acc, key) => {
+          acc[key as keyof typeof votes] = 0;
+          return acc;
+        },
+        {...votes},
+      ),
     );
-  }
+    setRemainingVotes(100);
+  };
 
-  if (!proposal) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Proposal not found</Text>
-        <Button title="Go Back" onPress={() => navigation.goBack()} />
-      </View>
+  const handleSubmit = () => {
+    const total = Object.values(votes).reduce(
+      (sum, current) => sum + current,
+      0,
     );
-  }
 
-  const isProposalActive = proposal.status === 'active';
-  const isDeadlinePassed = new Date(proposal.deadline) < new Date();
+    if (total !== 100) {
+      Alert.alert(
+        'Incomplete Distribution',
+        `You have used ${total}/100 votes. Please distribute all 100 votes.`,
+      );
+      return;
+    }
+
+    // Save vote data (mock for now)
+    console.log('Submitting votes:', votes);
+
+    // Navigate to map
+    navigation.navigate('Map');
+  };
+
+  const sortedCategories = Object.keys(votes).sort() as Array<
+    keyof typeof votes
+  >;
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.contentContainer}>
-        <Text style={styles.title}>{proposal.title}</Text>
-        
-        <View style={styles.statusContainer}>
-          <Text 
-            style={[
-              styles.statusBadge, 
-              proposal.status === 'active' ? styles.activeBadge : styles.closedBadge
-            ]}
-          >
-            {proposal.status.toUpperCase()}
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Demand Voting</Text>
+          <Text style={styles.subtitle}>
+            Distribute 100 votes among urban programs based on what you think is
+            most important for your community.
           </Text>
-          {isDeadlinePassed && (
-            <Text style={styles.deadlineText}>Voting period has ended</Text>
-          )}
         </View>
-        
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Description</Text>
-          <Text style={styles.description}>{proposal.description}</Text>
+
+        <View style={styles.votesRemainingContainer}>
+          <Text style={styles.votesRemainingText}>
+            Remaining Votes:{' '}
+            <Text
+              style={[
+                styles.votesCount,
+                {color: remainingVotes === 0 ? '#4CAF50' : '#2196F3'},
+              ]}>
+              {remainingVotes}
+            </Text>
+          </Text>
+          <TouchableOpacity
+            style={styles.resetButton}
+            onPress={handleResetVotes}>
+            <Text style={styles.resetButtonText}>Reset Votes</Text>
+          </TouchableOpacity>
         </View>
-        
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Voting Options</Text>
-          
-          {hasVoted ? (
-            <View style={styles.alreadyVotedContainer}>
-              <Text style={styles.alreadyVotedText}>You have already voted on this proposal</Text>
-            </View>
-          ) : !isProposalActive || isDeadlinePassed ? (
-            <View style={styles.votingClosedContainer}>
-              <Text style={styles.votingClosedText}>Voting is no longer available for this proposal</Text>
-            </View>
-          ) : (
-            <>
-              {proposal.options.map((option) => (
-                <VoteButton
-                  key={option}
-                  option={option}
-                  selected={selectedOption === option}
-                  onPress={() => setSelectedOption(option)}
-                />
-              ))}
-              
-              <Button
-                title="Submit Vote"
-                onPress={handleVote}
-                disabled={!selectedOption || submitting}
-                style={styles.submitButton}
+
+        {sortedCategories.map(category => (
+          <View key={category} style={styles.voteItem}>
+            <View style={styles.categoryRow}>
+              <Text style={styles.categoryText}>{category}</Text>
+              <TextInput
+                style={styles.voteInput}
+                keyboardType="number-pad"
+                value={votes[category].toString()}
+                onChangeText={value => handleVoteChange(category, value)}
+                maxLength={3}
               />
-            </>
-          )}
-        </View>
-        
-        {proposal.results && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Current Results</Text>
-            
-            {Object.entries(proposal.results).map(([option, count]) => (
-              <View key={option} style={styles.resultRow}>
-                <Text style={styles.resultOption}>{option}</Text>
-                <Text style={styles.resultCount}>{count} votes</Text>
-              </View>
-            ))}
+            </View>
+            <Slider
+              style={styles.slider}
+              minimumValue={0}
+              maximumValue={100}
+              step={1}
+              value={votes[category]}
+              onValueChange={value => handleVoteChange(category, value)}
+              minimumTrackTintColor="#2196F3"
+              maximumTrackTintColor="#ddd"
+              thumbTintColor="#2196F3"
+            />
           </View>
-        )}
-        
-        <View style={styles.deadlineContainer}>
-          <Text style={styles.deadlineLabel}>Voting Deadline:</Text>
-          <Text style={styles.deadlineValue}>
-            {new Date(proposal.deadline).toLocaleString()}
+        ))}
+
+        <TouchableOpacity
+          style={[
+            styles.submitButton,
+            remainingVotes !== 0 && styles.disabledButton,
+          ]}
+          onPress={handleSubmit}
+          disabled={remainingVotes !== 0}>
+          <Text style={styles.submitButtonText}>
+            {remainingVotes === 0
+              ? 'Submit Votes'
+              : `Distribute ${remainingVotes} more votes`}
           </Text>
-        </View>
-      </View>
-    </ScrollView>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -181,128 +191,103 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  scrollView: {
     padding: 20,
   },
-  errorText: {
-    fontSize: 18,
-    color: '#dc3545',
+  header: {
     marginBottom: 20,
-  },
-  contentContainer: {
-    padding: 16,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 16,
+    marginBottom: 10,
+    color: '#333',
   },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginRight: 10,
-  },
-  activeBadge: {
-    backgroundColor: '#c3e6cb',
-    color: '#155724',
-  },
-  closedBadge: {
-    backgroundColor: '#f8d7da',
-    color: '#721c24',
-  },
-  deadlineText: {
-    fontSize: 12,
-    color: '#dc3545',
-    fontStyle: 'italic',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  description: {
+  subtitle: {
     fontSize: 16,
-    lineHeight: 24,
+    color: '#666',
+    lineHeight: 22,
   },
-  alreadyVotedContainer: {
-    backgroundColor: '#e2e3e5',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-  },
-  alreadyVotedText: {
-    fontSize: 16,
-    color: '#383d41',
-    fontWeight: '500',
-  },
-  votingClosedContainer: {
-    backgroundColor: '#f8d7da',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-  },
-  votingClosedText: {
-    fontSize: 16,
-    color: '#721c24',
-    fontWeight: '500',
-  },
-  submitButton: {
-    marginTop: 16,
-    backgroundColor: '#28a745',
-  },
-  resultRow: {
+  votesRemainingContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 12,
+    alignItems: 'center',
     backgroundColor: '#fff',
+    padding: 15,
     borderRadius: 8,
-    marginBottom: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#007bff',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  resultOption: {
+  votesRemainingText: {
     fontSize: 16,
+    color: '#333',
+  },
+  votesCount: {
+    fontWeight: 'bold',
+    // Removed dynamic color here - it's now applied inline in the JSX
+  },
+  resetButton: {
+    padding: 8,
+  },
+  resetButtonText: {
+    color: '#F44336',
     fontWeight: '500',
   },
-  resultCount: {
+  voteItem: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  categoryText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    flex: 1,
+  },
+  voteInput: {
+    width: 50,
+    textAlign: 'center',
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    padding: 4,
+  },
+  slider: {
+    width: '100%',
+    height: 40,
+  },
+  submitButton: {
+    backgroundColor: '#2196F3',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 40,
+  },
+  disabledButton: {
+    backgroundColor: '#B0BEC5',
+  },
+  submitButtonText: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  deadlineContainer: {
-    marginTop: 16,
-    padding: 16,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#ffc107',
-  },
-  deadlineLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  deadlineValue: {
-    fontSize: 16,
-    fontWeight: '500',
   },
 });
 
