@@ -17,6 +17,10 @@ import WalletScreen from './src/screens/WalletScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import VotingScreen from './src/screens/VotingScreen';
 import MapScreen from './src/screens/MapScreen';
+import CitizenshipVerificationScreen from './src/screens/CitizenshipVerificationScreen';
+import GeoPatternVerificationScreen from './src/screens/GeoPatternVerificationScreen';
+import LegalDocumentVerificationScreen from './src/screens/LegalDocumentVerificationScreen';
+import TroubleshootingScreen from './src/screens/TroubleshootingScreen';
 // import HomeScreen from './src/screens/HomeScreen';
 // import ProjectsScreen from './src/screens/ProjectsScreen';
 // import ProjectDetailScreen from './src/screens/ProjectDetailScreen';
@@ -32,6 +36,10 @@ type RootStackParamList = {
   Login: undefined;
   Wallet: undefined;
   Map: undefined;
+  CitizenshipVerification: undefined;
+  GeoPatternVerification: undefined;
+  LegalDocumentVerification: undefined;
+  Troubleshooting: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -49,12 +57,32 @@ const App = () => {
           <Stack.Screen
             name="Wallet"
             component={WalletScreen}
-            options={{headerShown: false}}
+            options={{title: 'Connect Wallet'}}
+          />
+          <Stack.Screen
+            name="CitizenshipVerification"
+            component={CitizenshipVerificationScreen}
+            options={{title: 'Verify Citizenship'}}
+          />
+          <Stack.Screen
+            name="GeoPatternVerification"
+            component={GeoPatternVerificationScreen}
+            options={{title: 'Geo Verification'}}
+          />
+          <Stack.Screen
+            name="LegalDocumentVerification"
+            component={LegalDocumentVerificationScreen}
+            options={{title: 'Document Verification'}}
+          />
+          <Stack.Screen
+            name="Troubleshooting"
+            component={TroubleshootingScreen}
+            options={{title: 'Help & Support'}}
           />
           <Stack.Screen
             name="Profile"
             component={ProfileScreen}
-            options={{headerShown: false}}
+            options={{title: 'Your Profile'}}
           />
           <Stack.Screen
             name="VotingScreen"

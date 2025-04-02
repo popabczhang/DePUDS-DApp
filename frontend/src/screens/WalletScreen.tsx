@@ -15,6 +15,7 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 type RootStackParamList = {
   Profile: undefined;
   Wallet: undefined;
+  CitizenshipVerification: undefined;
   // Add other screens as needed
 };
 
@@ -70,6 +71,7 @@ const WalletScreen = ({navigation}: WalletScreenProps) => {
           'Wallet Connected',
           'Your wallet has been connected successfully.',
         );
+        handleWalletConnected();
       }, 2000);
     } catch (error) {
       console.error('Error connecting wallet:', error);
@@ -77,6 +79,11 @@ const WalletScreen = ({navigation}: WalletScreenProps) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleWalletConnected = () => {
+    // After wallet connection is successful
+    navigation.navigate('CitizenshipVerification');
   };
 
   const continueToProfile = () => {
