@@ -27,6 +27,7 @@ type RootStackParamList = {
   Projects: undefined;
   ProjectDetail: {projectId: string};
   Voting: {proposalId: string};
+  VotingScreen: undefined;
   Profile: undefined;
   Login: undefined;
   Wallet: undefined;
@@ -56,7 +57,7 @@ const App = () => {
             options={{headerShown: false}}
           />
           <Stack.Screen
-            name="Voting"
+            name="VotingScreen"
             component={VotingScreen}
             options={{headerShown: false}}
           />
