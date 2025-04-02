@@ -78,7 +78,7 @@ const LoginScreen = ({navigation}: LoginScreenProps) => {
         style={styles.container}>
         <View style={styles.content}>
           <Image
-            source={require('../assets/icons/logo_g.png')}
+            source={require('../assets/icons/logo_g_crop.png')}
             style={styles.logo}
             resizeMode="contain"
           />
@@ -174,9 +174,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 20,
+    width: 200,
+    height: 200,
+    marginBottom: 30,
   },
   title: {
     fontSize: 26,
