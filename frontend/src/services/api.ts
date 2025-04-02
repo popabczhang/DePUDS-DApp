@@ -1,6 +1,37 @@
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axiosRetry from 'axios-retry';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+if (!AsyncStorage) {
+  console.error('AsyncStorage is not available. Ensure it is installed and linked properly.');
+}
+
+// Base API URL - should be configured per environment
+const API_BASE_URL = 'https://api.depuds.org/v1'; // Replace with actual API URL
+
+// Configure axios defaults
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+axiosRetry(api, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
+
+// Intercept requests to add auth token
+api.interceptors.request.use(
+  async config => {
+    const token = await AsyncStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  error => {
+    return Promise.reject(error);
+  },
+);
 
 // Mock data for testing
 const MOCK_DATA: Record<string, any[]> = {
@@ -91,4 +122,34 @@ export const postData = async (endpoint: string, data: any) => {
     console.error('Error posting data:', error);
     throw error;
   }
+};
+
+export const saveProfileData = async (encryptedData: string): Promise<void> => {
+  try {
+    const walletAddress = await AsyncStorage.getItem('walletAddress');
+
+    const response = await api.post('/user/profile', {
+      encryptedData,
+      walletAddress,
+    });
+
+    if (response.data?.userId) {
+      await AsyncStorage.setItem('userId', response.data.userId);
+    }
+
+    return response.data;
+  } catch (error: any) {
+    console.error('API Error saving profile:', error.message || error);
+    if (error.response) {
+      console.error('Response data:', error.response.data);
+      console.error('Response status:', error.response.status);
+    }
+    throw new Error('Failed to save profile data');
+  }
+};
+
+// Other API methods would go here
+export const getUserProfile = async (): Promise<any> => {
+  const response = await api.get('/user/profile');
+  return response.data;
 };

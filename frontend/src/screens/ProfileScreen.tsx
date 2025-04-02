@@ -1,17 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Button } from '../components/index';
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  TouchableOpacity,
+  Alert,
+  SafeAreaView,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {Button} from '../components/index';
 import globalStyles from '../assets/styles/global';
-import { getAccounts } from '../services/web3';
-import { fetchData } from '../services/api';
-import { User, Vote } from '../types';
+import {getAccounts} from '../services/web3';
+import {fetchData, saveProfileData} from '../services/api';
+import {User, Vote} from '../types';
+import {Picker} from '@react-native-picker/picker';
+import {encryptData} from '../utils/encryption';
+import {useNavigation} from '@react-navigation/native';
 
 type RootStackParamList = {
   Home: undefined;
   Projects: undefined;
-  ProjectDetail: { projectId: string };
-  Voting: { proposalId: string };
+  ProjectDetail: {projectId: string};
+  Voting: {proposalId: string};
+  VotingScreen: undefined;
   Profile: undefined;
 };
 
@@ -19,11 +35,21 @@ type ProfileScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 };
 
-const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
+const ProfileScreen = ({navigation}: ProfileScreenProps) => {
   const [account, setAccount] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [votes, setVotes] = useState<Vote[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState({
+    age: '',
+    gender: '',
+    race: '',
+    occupation: '',
+    income: '',
+    schoolEnrollment: '',
+    marriageStatus: '',
+    numberOfChildren: '',
+  });
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -32,11 +58,13 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
         const accounts = await getAccounts();
         if (accounts && accounts.length > 0) {
           setAccount(accounts[0]);
-          
+
           // Fetch user data
           const userData = await fetchData(`users/${accounts[0]}`);
-          setUser(Array.isArray(userData) && userData.length > 0 ? userData[0] : null);
-          
+          setUser(
+            Array.isArray(userData) && userData.length > 0 ? userData[0] : null,
+          );
+
           // Fetch user votes
           const votesData = await fetchData(`votes/user/${accounts[0]}`);
           setVotes(votesData);
@@ -47,7 +75,7 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
         setLoading(false);
       }
     };
-    
+
     fetchUserData();
   }, []);
 
@@ -57,12 +85,14 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
       if (accounts && accounts.length > 0) {
         setAccount(accounts[0]);
         setLoading(true);
-        
+
         try {
           // Fetch user data
           const userData = await fetchData(`users/${accounts[0]}`);
-          setUser(Array.isArray(userData) && userData.length > 0 ? userData[0] : null);
-          
+          setUser(
+            Array.isArray(userData) && userData.length > 0 ? userData[0] : null,
+          );
+
           // Fetch user votes
           const votesData = await fetchData(`votes/user/${accounts[0]}`);
           setVotes(votesData);
@@ -75,6 +105,58 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
     } catch (error) {
       console.error('Error connecting wallet:', error);
       Alert.alert('Error', 'Failed to connect wallet. Please try again.');
+    }
+  };
+
+  const updateProfile = (key: keyof typeof profile, value: string) => {
+    if (!key || typeof value !== 'string') {
+      console.warn(`Invalid key or value provided: key=${key}, value=${value}`);
+      return;
+    }
+    setProfile(prevProfile => ({
+      ...prevProfile,
+      [key]: value.trim(), // Trim whitespace from the value
+    }));
+  };
+
+  const validateForm = () => {
+    // Simple validation
+    for (const [key, value] of Object.entries(profile)) {
+      if (!value) {
+        Alert.alert('Missing Information', `Please provide your ${key}`);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    try {
+      setLoading(true);
+
+      // Encrypt sensitive data before sending
+      const encryptedData = encryptData(profile);
+
+      // Mock API call
+      await saveProfileData(encryptedData);
+
+      // Show success message and navigate to the next page
+      console.log('Profile saved successfully (mocked).');
+      navigation.navigate('VotingScreen');
+    } catch (error) {
+      // Log the error but still proceed
+      console.warn(
+        'API Error saving profile (mocked):',
+        error instanceof Error ? error.message : error,
+      );
+
+      // Proceed to the next page even if the API call fails
+      console.log('Proceeding to VotingScreen despite API error.');
+      navigation.navigate('VotingScreen');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -99,55 +181,147 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.container}>
-        <View style={styles.contentContainer}>
-          <View style={styles.accountCard}>
-            <Text style={styles.accountLabel}>Connected Account</Text>
-            <Text style={styles.accountAddress}>{account}</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}>
+        <ScrollView style={styles.scrollContainer}>
+          <Text style={styles.title}>Your Profile</Text>
+
+          <View style={styles.securityNote}>
+            <Text style={styles.securityNoteText}>
+              Your data is encrypted and securely stored. We value your privacy.
+            </Text>
           </View>
-          
-          {user && (
-            <View style={styles.infoCard}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Voting Power:</Text>
-                <Text style={styles.infoValue}>{user.votingPower}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Proposals Voted:</Text>
-                <Text style={styles.infoValue}>{user.votedProposals.length}</Text>
-              </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Age</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your age"
+              keyboardType="number-pad"
+              value={profile.age}
+              onChangeText={value => updateProfile('age', value)}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Gender</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={profile.gender}
+                onValueChange={value => updateProfile('gender', value)}>
+                <Picker.Item label="Select Gender" value="" />
+                <Picker.Item label="Male" value="male" />
+                <Picker.Item label="Female" value="female" />
+                <Picker.Item label="Non-binary" value="nonbinary" />
+                <Picker.Item label="Prefer not to say" value="undefined" />
+              </Picker>
             </View>
-          )}
-          
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Voting History</Text>
-            
-            {votes.length === 0 ? (
-              <Text style={styles.noVotesText}>You haven't voted on any proposals yet</Text>
-            ) : (
-              votes.map((vote) => (
-                <TouchableOpacity
-                  key={vote.proposalId}
-                  style={styles.voteCard}
-                  onPress={() => navigation.navigate('Voting', { proposalId: vote.proposalId })}
-                >
-                  <Text style={styles.voteOption}>Voted: {vote.option}</Text>
-                  <Text style={styles.voteTimestamp}>
-                    {new Date(vote.timestamp).toLocaleString()}
-                  </Text>
-                  <Text style={styles.voteTxHash}>Tx: {vote.txHash.substring(0, 10)}...</Text>
-                </TouchableOpacity>
-              ))
-            )}
           </View>
-          
-          <Button
-            title="Browse Projects"
-            onPress={() => navigation.navigate('Projects')}
-            style={styles.browseButton}
-          />
-        </View>
-      </ScrollView>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Race/Ethnicity</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={profile.race}
+                onValueChange={value => updateProfile('race', value)}>
+                <Picker.Item label="Select Race/Ethnicity" value="" />
+                <Picker.Item label="Asian" value="asian" />
+                <Picker.Item label="Black/African American" value="black" />
+                <Picker.Item label="Hispanic/Latino" value="hispanic" />
+                <Picker.Item label="Native American" value="native" />
+                <Picker.Item label="White" value="white" />
+                <Picker.Item label="Multiple Races" value="multiple" />
+                <Picker.Item label="Prefer not to say" value="undefined" />
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Occupation</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your occupation"
+              value={profile.occupation}
+              onChangeText={value => updateProfile('occupation', value)}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Annual Income</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={profile.income}
+                onValueChange={value => updateProfile('income', value)}>
+                <Picker.Item label="Select Income Range" value="" />
+                <Picker.Item label="Less than $25,000" value="<25k" />
+                <Picker.Item label="$25,000 - $49,999" value="25k-50k" />
+                <Picker.Item label="$50,000 - $74,999" value="50k-75k" />
+                <Picker.Item label="$75,000 - $99,999" value="75k-100k" />
+                <Picker.Item label="$100,000 - $149,999" value="100k-150k" />
+                <Picker.Item label="$150,000 or more" value=">150k" />
+                <Picker.Item label="Prefer not to say" value="undefined" />
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>School Enrollment</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={profile.schoolEnrollment}
+                onValueChange={value =>
+                  updateProfile('schoolEnrollment', value)
+                }>
+                <Picker.Item label="Select Enrollment Status" value="" />
+                <Picker.Item label="Not in school" value="none" />
+                <Picker.Item label="K-12" value="k12" />
+                <Picker.Item label="Undergraduate" value="undergrad" />
+                <Picker.Item label="Graduate" value="grad" />
+                <Picker.Item label="Professional" value="professional" />
+                <Picker.Item label="Vocational" value="vocational" />
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Marriage Status</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={profile.marriageStatus}
+                onValueChange={value => updateProfile('marriageStatus', value)}>
+                <Picker.Item label="Select Marriage Status" value="" />
+                <Picker.Item label="Single" value="single" />
+                <Picker.Item label="Married" value="married" />
+                <Picker.Item label="Divorced" value="divorced" />
+                <Picker.Item label="Widowed" value="widowed" />
+                <Picker.Item label="Separated" value="separated" />
+                <Picker.Item label="Prefer not to say" value="undefined" />
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Number of Children</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter number of children"
+              keyboardType="number-pad"
+              value={profile.numberOfChildren}
+              onChangeText={value => updateProfile('numberOfChildren', value)}
+            />
+          </View>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleSubmit}
+            disabled={loading}>
+            <Text style={styles.buttonText}>
+              {loading ? 'Saving...' : 'Submit and Continue'}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -155,7 +329,65 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f5f5f5',
+  },
+  scrollContainer: {
+    padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+    color: '#333',
+  },
+  securityNote: {
+    backgroundColor: '#e7f3ff',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
+  },
+  securityNoteText: {
+    color: '#0c5460',
+  },
+  formGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    marginBottom: 8,
+    fontWeight: '500',
+    color: '#333',
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+  },
+  pickerContainer: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  button: {
+    backgroundColor: '#2196F3',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 40,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,
