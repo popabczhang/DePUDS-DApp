@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Button } from '../components/index';
 import globalStyles from '../assets/styles/global';
@@ -98,62 +98,64 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.contentContainer}>
-        <View style={styles.accountCard}>
-          <Text style={styles.accountLabel}>Connected Account</Text>
-          <Text style={styles.accountAddress}>{account}</Text>
-        </View>
-        
-        {user && (
-          <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Voting Power:</Text>
-              <Text style={styles.infoValue}>{user.votingPower}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Proposals Voted:</Text>
-              <Text style={styles.infoValue}>{user.votedProposals.length}</Text>
-            </View>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.container}>
+        <View style={styles.contentContainer}>
+          <View style={styles.accountCard}>
+            <Text style={styles.accountLabel}>Connected Account</Text>
+            <Text style={styles.accountAddress}>{account}</Text>
           </View>
-        )}
-        
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Voting History</Text>
           
-          {votes.length === 0 ? (
-            <Text style={styles.noVotesText}>You haven't voted on any proposals yet</Text>
-          ) : (
-            votes.map((vote) => (
-              <TouchableOpacity
-                key={vote.proposalId}
-                style={styles.voteCard}
-                onPress={() => navigation.navigate('Voting', { proposalId: vote.proposalId })}
-              >
-                <Text style={styles.voteOption}>Voted: {vote.option}</Text>
-                <Text style={styles.voteTimestamp}>
-                  {new Date(vote.timestamp).toLocaleString()}
-                </Text>
-                <Text style={styles.voteTxHash}>Tx: {vote.txHash.substring(0, 10)}...</Text>
-              </TouchableOpacity>
-            ))
+          {user && (
+            <View style={styles.infoCard}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Voting Power:</Text>
+                <Text style={styles.infoValue}>{user.votingPower}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Proposals Voted:</Text>
+                <Text style={styles.infoValue}>{user.votedProposals.length}</Text>
+              </View>
+            </View>
           )}
+          
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Voting History</Text>
+            
+            {votes.length === 0 ? (
+              <Text style={styles.noVotesText}>You haven't voted on any proposals yet</Text>
+            ) : (
+              votes.map((vote) => (
+                <TouchableOpacity
+                  key={vote.proposalId}
+                  style={styles.voteCard}
+                  onPress={() => navigation.navigate('Voting', { proposalId: vote.proposalId })}
+                >
+                  <Text style={styles.voteOption}>Voted: {vote.option}</Text>
+                  <Text style={styles.voteTimestamp}>
+                    {new Date(vote.timestamp).toLocaleString()}
+                  </Text>
+                  <Text style={styles.voteTxHash}>Tx: {vote.txHash.substring(0, 10)}...</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+          
+          <Button
+            title="Browse Projects"
+            onPress={() => navigation.navigate('Projects')}
+            style={styles.browseButton}
+          />
         </View>
-        
-        <Button
-          title="Browse Projects"
-          onPress={() => navigation.navigate('Projects')}
-          style={styles.browseButton}
-        />
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
   },
   loadingContainer: {
     flex: 1,
