@@ -1,4 +1,6 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# DePUDS DApp Frontend
+
+This is the React Native frontend for the DePUDS (Decentralized Prosocial Urban Development System) application.
 
 # Getting Started
 
@@ -8,7 +10,7 @@ This is a new [**React Native**](https://reactnative.dev) project, bootstrapped 
 
 First, you will need to run **Metro**, the JavaScript build tool for React Native.
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+To start the Metro dev server, run the following command from the `frontend` directory:
 
 ```sh
 # Using npm
@@ -20,7 +22,7 @@ yarn start
 
 ## Step 2: Build and run your app
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+With Metro running, open a new terminal window/pane from the `frontend` directory, and use one of the following commands to build and run your Android or iOS app:
 
 ### Android
 
@@ -36,20 +38,25 @@ yarn android
 
 For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+From the `frontend/ios` directory, run the Ruby bundler to install CocoaPods itself (if needed):
 
 ```sh
+# Navigate to ios directory
+cd ios
+
+# Install bundler gems
 bundle install
-```
 
-Then, and every time you update your native dependencies, run:
-
-```sh
+# Install Pods
 bundle exec pod install
+
+# Navigate back to frontend directory
+cd ..
 ```
 
 For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
 
+Now, run the app from the `frontend` directory:
 ```sh
 # Using npm
 npm run ios
@@ -58,33 +65,52 @@ npm run ios
 yarn ios
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+If everything is set up correctly, you should see the app running in the Android Emulator, iOS Simulator, or your connected device.
 
 This is one way to run your app — you can also build it directly from Android Studio or Xcode.
 
-## Step 3: Modify your app
+## Project Structure Overview
 
-Now that you have successfully run the app, let's make changes!
+- **`App.tsx`**: The main entry point defining the navigation stack using `@react-navigation/native-stack`.
+- **`src/`**: Contains the core application code.
+    - **`screens/`**: Contains all the main screens of the application (Login, Wallet, Verification, Profile, Voting, Map, etc.). Each screen represents a distinct view in the app.
+    - **`components/`**: Reusable UI components used across different screens (e.g., `Button`, `Input`, specific login forms).
+    - **`services/`**: Modules for interacting with external services.
+        - `api.ts`: Handles HTTP requests to the backend API using `axios`. Includes mock data for development.
+        - `web3.ts`: Provides mocked functions for interacting with a blockchain wallet (e.g., Polygon).
+    - **`utils/`**: Utility functions and constants.
+        - `helpers.ts`: General helper functions (e.g., date formatting).
+        - `constants.ts`: Application-wide constants (e.g., API URLs - currently placeholder).
+        - `encryption.ts`: Placeholder functions for data encryption/decryption (uses simple Base64 for demonstration).
+    - **`types/`**: TypeScript type definitions and interfaces (e.g., `Project`, `User`, `Vote`).
+    - **`assets/`**: Static assets like images, icons, and potentially global styles.
+        - `icons/`: App icons.
+        - `styles/`: Global style definitions (if any).
+        - `map_placeholder.png`: Placeholder image for the map screen.
+- **`app.json`**: Configuration for the React Native app (name, display name).
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+## Key Dependencies
+
+- **`react-native`**: Core framework.
+- **`@react-navigation/native` & `@react-navigation/native-stack`**: For handling navigation between screens.
+- **`axios`**: For making HTTP requests to the backend API.
+- **`@react-native-async-storage/async-storage`**: For persistent local storage.
+- **`@react-native-picker/picker`**: Dropdown picker component used in the Profile screen.
+- **`@react-native-community/slider`**: Slider component used in the Voting screen.
+- **`react-native-safe-area-context`**: Handling safe areas on devices with notches/islands.
+
+## Modifying the App
+
+Open the project in your text editor of choice and make changes to the files (primarily within the `src` directory). When you save, your app running in the simulator/device will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
 
 When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
 
 - **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
 - **iOS**: Press <kbd>R</kbd> in iOS Simulator.
 
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
 # Troubleshooting
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page on the official React Native documentation.
 
 # Learn More
 
