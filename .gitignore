@@ -1,0 +1,25 @@
+# Ignore Python virtual environments
+/backend/.venv/
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Node modules and build artifacts
+node_modules/
+npm-debug.log
+
+# React Native packager logs
+*.log
+
+# Xcode files
+ios/Pods/
+ios/Podfile.lock
+ios/build/
+
+# Android files
+android/.gradle/
+android/**/build/
+
+# dotenv environment files
+*.env
