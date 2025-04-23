@@ -2,133 +2,117 @@ import json
 import os
 from web3 import Web3
 from web3.middleware import geth_poa_middleware # Required for PoA networks like Polygon
+from web3.exceptions import ContractLogicError # Import for better error handling
+
+# --- Add get_blockchain_service to services/blockchain.py ---
+# It's better practice to keep the getter close to where the service might be instantiated
+# or managed, although having it in app/__init__.py is also common.
+# We'll keep the one in app/__init__.py for now as it uses the global instance.
 
 class BlockchainService:
-    def __init__(self, provider_url, contract_address, abi_path, default_account=None, private_key=None):
+    def __init__(self, provider_url, contract_address, abi_path, private_key=None):
         self.w3 = Web3(Web3.HTTPProvider(provider_url))
-        # Inject PoA middleware for networks like Polygon/Amoy
         self.w3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
-        if not self.w3.is_connected():
-            raise ConnectionError("Failed to connect to the blockchain node.")
+        if not self.w3.isConnected():
+            raise ConnectionError(f"Failed to connect to the blockchain node at {provider_url}.")
 
-        self.contract_address = Web3.to_checksum_address(contract_address)
+        # --- Change this line ---
+        # self.contract_address = Web3.to_checksum_address(contract_address)
+        self.contract_address = Web3.toChecksumAddress(contract_address) # Use toChecksumAddress() instead
+        # --- End change ---
         self.abi = self._load_abi(abi_path)
         self.contract = self.w3.eth.contract(address=self.contract_address, abi=self.abi)
 
-        self.default_account = default_account
+        self.account = None
         self.private_key = private_key
-        if default_account:
-             self.w3.eth.default_account = Web3.to_checksum_address(default_account)
-        elif private_key:
-             self.default_account = self.w3.eth.account.from_key(private_key).address
-             self.w3.eth.default_account = self.default_account
+        if private_key:
+            self.account = self.w3.eth.account.from_key(private_key)
+            self.w3.eth.default_account = self.account.address # Set default account for calls if key provided
+            print(f"BlockchainService initialized with account: {self.account.address}")
         else:
-            # Handle case where no account/key is provided for sending transactions
-            # You might want to raise an error or only allow read operations
-            print("Warning: No default account or private key provided for BlockchainService. Sending transactions will fail.")
-
+            print("Warning: No private key provided for BlockchainService. Sending transactions will require a key passed to send_contract_transaction.")
 
     def _load_abi(self, abi_path):
         """Loads ABI from a JSON file."""
         if not os.path.exists(abi_path):
-             raise FileNotFoundError(f"ABI file not found at path: {abi_path}")
+            raise FileNotFoundError(f"ABI file not found at path: {abi_path}")
         with open(abi_path, 'r') as f:
             contract_json = json.load(f)
+            # Ensure ABI is actually present
+            if 'abi' not in contract_json or not contract_json['abi']:
+                 raise ValueError(f"ABI array not found or empty in {abi_path}. Did you compile the contract?")
             return contract_json['abi']
 
-    def get_project_count(self):
-        """Calls the public projectCount variable."""
+    def call_contract_function(self, function_name, *args):
+        """Calls a view or pure function on the contract."""
         try:
-            count = self.contract.functions.projectCount().call()
-            return count
+            func = self.contract.functions[function_name](*args)
+            result = func.call()
+            return result
         except Exception as e:
             # Log error appropriately
-            print(f"Error getting project count: {e}")
-            return None
+            print(f"Error calling contract function '{function_name}' with args {args}: {e}")
+            # Re-raise or handle specific exceptions as needed
+            raise e
 
-    def get_project(self, project_id):
-        """Calls the projects mapping to get project details."""
-        try:
-            # Solidity mappings return default values if key not found.
-            # Check projectCount or handle default return values.
-            project_data = self.contract.functions.projects(project_id).call()
-            # Assuming the struct Project has fields like name, description, voteCount, isActive
-            # The order matters and corresponds to the struct definition in Solidity.
-            # Example: return {'id': project_id, 'name': project_data[0], 'description': project_data[1], ...}
-            # Adjust based on your actual struct fields.
-            # If the first element is empty or zero, the project likely doesn't exist.
-            if not project_data or not project_data[0]: # Basic check if project exists
-                 return None
-            # Replace with actual struct fields and order
-            return {
-                "id": project_id,
-                "field1": project_data[0], # e.g., name
-                "field2": project_data[1], # e.g., description
-                "field3": project_data[2], # e.g., voteCount
-                # ... add other fields based on your struct
-            }
-        except Exception as e:
-            print(f"Error getting project {project_id}: {e}")
-            return None
+    def send_contract_transaction(self, function_name, args_list, sender_private_key=None):
+        """Builds, signs, and sends a transaction to the contract."""
+        signing_key = sender_private_key or self.private_key
+        if not signing_key:
+            raise ValueError("Private key required to send a transaction, none provided.")
 
-    def add_project(self, name, description, submitter_private_key):
-        """
-        Calls the addProject function (assuming it exists).
-        Requires the private key of the account submitting the transaction.
-        """
-        if not submitter_private_key:
-            raise ValueError("Private key required to add a project.")
-
-        account = self.w3.eth.account.from_key(submitter_private_key)
+        account = self.w3.eth.account.from_key(signing_key)
         nonce = self.w3.eth.get_transaction_count(account.address)
+        chain_id = self.w3.eth.chain_id # Get chain ID dynamically
 
         try:
-            # Assume your contract has: function addProject(string memory _name, string memory _description) public { ... }
-            transaction = self.contract.functions.addProject(name, description).build_transaction({
-                'chainId': 80002, # Amoy Chain ID
-                'gas': 2000000, # Estimate or set appropriate gas limit
-                # Let web3.py estimate gas price or set manually if needed
-                # 'gasPrice': self.w3.to_wei('30', 'gwei'), # Example manual gas price
-                'nonce': nonce,
-                'from': account.address # Ensure 'from' is set
-            })
-
-            signed_txn = self.w3.eth.account.sign_transaction(transaction, private_key=submitter_private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
-            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
-            return {"tx_hash": tx_hash.hex(), "receipt": receipt}
-        except Exception as e:
-            print(f"Error adding project: {e}")
-            # Consider returning specific error info
-            return None
-
-    def vote_on_project(self, project_id, voter_private_key):
-        """
-        Calls the vote function (assuming it exists).
-        Requires the private key of the voter.
-        """
-        if not voter_private_key:
-            raise ValueError("Private key required to vote.")
-
-        account = self.w3.eth.account.from_key(voter_private_key)
-        nonce = self.w3.eth.get_transaction_count(account.address)
-
-        try:
-            # Assume your contract has: function vote(uint _projectId) public { ... }
-            transaction = self.contract.functions.vote(project_id).build_transaction({
-                'chainId': 80002, # Amoy Chain ID
-                'gas': 500000, # Estimate or set appropriate gas limit
+            # Build Transaction
+            func = self.contract.functions[function_name](*args_list)
+            tx_params = {
+                'chainId': chain_id,
+                'gas': 2000000, # Consider estimating gas: func.estimate_gas({'from': account.address})
+                # Let web3.py handle gas price estimation for EIP-1559 networks like Polygon
                 'nonce': nonce,
                 'from': account.address
-            })
+            }
+            # Estimate gas if needed, handle potential errors
+            # try:
+            #     estimated_gas = func.estimate_gas({'from': account.address})
+            #     tx_params['gas'] = int(estimated_gas * 1.2) # Add buffer
+            # except Exception as estimate_error:
+            #     print(f"Warning: Gas estimation failed for {function_name}: {estimate_error}. Using default.")
+            #     # Keep default gas or handle error
 
-            signed_txn = self.w3.eth.account.sign_transaction(transaction, private_key=voter_private_key)
+            transaction = func.build_transaction(tx_params)
+
+            # Sign Transaction
+            signed_txn = self.w3.eth.account.sign_transaction(transaction, private_key=signing_key)
+
+            # Send Transaction
             tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
-            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
-            return {"tx_hash": tx_hash.hex(), "receipt": receipt}
-        except Exception as e:
-            print(f"Error voting on project {project_id}: {e}")
-            return None
+            print(f"Transaction sent: {tx_hash.hex()}") # Log tx hash immediately
 
-    # Add other methods as needed to interact with your contract functions
+            # Wait for Receipt (optional here, can be done by caller if needed)
+            # receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+            # print(f"Transaction confirmed: {receipt.transactionHash.hex()}")
+            return tx_hash.hex() # Return the transaction hash
+
+        except ContractLogicError as cle:
+             print(f"Contract logic error sending transaction '{function_name}': {cle}")
+             # Extract revert reason if possible (depends on web3.py version and node)
+             # You might need custom error decoding based on your contract
+             raise Exception(f"Transaction reverted: {cle}") # Re-raise a more generic exception for the API layer
+        except ValueError as ve:
+             # Handle specific web3.py value errors (e.g., insufficient funds, gas issues)
+             print(f"Value error sending transaction '{function_name}': {ve}")
+             raise Exception(f"Transaction error: {ve}")
+        except Exception as e:
+            print(f"Error sending transaction '{function_name}': {e}")
+            raise e # Re-raise other unexpected errors
+
+    # Remove or comment out the old specific methods if no longer needed
+    # def get_project_count(self): ...
+    # def get_project(self, project_id): ...
+    # def add_project(self, name, description, submitter_private_key): ...
+    # def vote_on_project(self, project_id, voter_private_key): ...

@@ -1,79 +1,80 @@
 from flask import Flask
 from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import JWTManager
 from config import Config
-from .extensions import db, jwt # Assuming you have db and jwt in extensions.py
-from .services.blockchain import BlockchainService # Import the service
-import os # Import os
+from .extensions import db, jwt
+from .services.blockchain import BlockchainService # Import the service class
+import os
 
-# Define blockchain_service globally or attach it to the app context
+# Define blockchain_service globally
 blockchain_service = None
 
 def create_app(config_class=Config):
-    global blockchain_service # Access the global variable
+    global blockchain_service
 
     app = Flask(__name__)
     app.config.from_object(config_class)
 
     # Initialize extensions
-    CORS(app) # Enable CORS
+    CORS(app)
     db.init_app(app)
     jwt.init_app(app)
 
     # Initialize Blockchain Service
     try:
-        # Check if necessary config values are present
-        if not app.config.get('AMOY_RPC_URL') or \
-           not app.config.get('CONTRACT_ADDRESS') or \
-           not app.config.get('CONTRACT_ABI_PATH'):
-            raise ValueError("Missing blockchain configuration in environment variables (AMOY_RPC_URL, CONTRACT_ADDRESS, CONTRACT_ABI_PATH).")
+        rpc_url = app.config.get('AMOY_RPC_URL')
+        contract_address = app.config.get('CONTRACT_ADDRESS')
+        abi_path = app.config.get('CONTRACT_ABI_PATH')
+        backend_private_key = app.config.get('BACKEND_WALLET_PRIVATE_KEY') # Get the key
 
-        # Check if ABI file exists before initializing
-        if not os.path.exists(app.config['CONTRACT_ABI_PATH']):
-             raise FileNotFoundError(f"ABI file not found at: {app.config['CONTRACT_ABI_PATH']}")
+        if not rpc_url or not contract_address or not abi_path:
+            raise ValueError("Missing blockchain configuration (AMOY_RPC_URL, CONTRACT_ADDRESS, CONTRACT_ABI_PATH).")
 
-        # Instantiate the service - decide how to handle the private key
-        # Option 1: Use a dedicated backend wallet key from config (if needed for sending txns)
-        # backend_private_key = app.config.get('BACKEND_WALLET_PRIVATE_KEY')
+        if not os.path.exists(abi_path):
+             raise FileNotFoundError(f"ABI file not found at: {abi_path}")
+
+        # --- Use Option 1: Initialize with the backend private key ---
+        blockchain_service = BlockchainService(
+            provider_url=rpc_url,
+            contract_address=contract_address,
+            abi_path=abi_path,
+            private_key=backend_private_key # Pass the key
+        )
+        # --- End Option 1 ---
+
+        # Option 2 (commented out): Initialize without a default key
         # blockchain_service = BlockchainService(
-        #     provider_url=app.config['AMOY_RPC_URL'],
-        #     contract_address=app.config['CONTRACT_ADDRESS'],
-        #     abi_path=app.config['CONTRACT_ABI_PATH'],
-        #     private_key=backend_private_key # Pass the key if backend sends transactions
+        #     provider_url=rpc_url,
+        #     contract_address=contract_address,
+        #     abi_path=abi_path
         # )
 
-        # Option 2: Initialize without a default key (if txns are signed client-side or per-request)
-        blockchain_service = BlockchainService(
-            provider_url=app.config['AMOY_RPC_URL'],
-            contract_address=app.config['CONTRACT_ADDRESS'],
-            abi_path=app.config['CONTRACT_ABI_PATH']
-            # No private_key here; it will be passed per-method call if needed
-        )
-        print("BlockchainService initialized successfully.") # Add print statement
+        print("BlockchainService initialized successfully.")
+        app.blockchain_service = blockchain_service # Attach to app context if needed elsewhere
 
     except (ConnectionError, FileNotFoundError, ValueError, Exception) as e:
-        # Log the error appropriately instead of just printing
-        print(f"Error initializing BlockchainService: {e}")
-        # Decide if the app should fail to start or continue without blockchain features
-        # raise e # Uncomment to make app fail if blockchain service fails
-        blockchain_service = None # Ensure it's None if initialization failed
+        app.logger.error(f"Fatal Error initializing BlockchainService: {e}", exc_info=True) # Use app logger
+        # Decide if the app should fail to start
+        raise RuntimeError(f"Could not initialize BlockchainService: {e}") from e
+        # blockchain_service = None # Set to None if allowing app to run without it
 
     # Register blueprints
-    from .routes import routes_bp # Assuming routes are in routes_bp
+    # Ensure routes_bp is correctly defined in app/routes/__init__.py
+    from .routes import routes_bp
     app.register_blueprint(routes_bp, url_prefix='/api')
 
     # Create database tables if they don't exist
     with app.app_context():
+        # db.drop_all() # Optional: drop tables for clean start during dev
         db.create_all()
+        print("Database tables checked/created.")
 
     return app
 
-# Function to get the blockchain service instance (useful in blueprints/routes)
+# Function to get the blockchain service instance
 def get_blockchain_service():
+    # Access the globally initialized service
     global blockchain_service
     if blockchain_service is None:
-        # This shouldn't happen if create_app succeeded and didn't raise an error,
-        # but handle it defensively.
+        # This should ideally not happen if create_app raises an error on failure
         raise RuntimeError("BlockchainService is not initialized.")
     return blockchain_service

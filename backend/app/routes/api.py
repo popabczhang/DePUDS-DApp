@@ -4,7 +4,7 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from app.extensions import db
 from app.models.user import User
 from app.models.profile import Profile
-from app.services.blockchain import get_blockchain_service # Import the service getter
+from app import get_blockchain_service # Import from app package (__init__.py)
 
 api = Blueprint('api', __name__)
 
