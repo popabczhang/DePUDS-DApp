@@ -1,3 +1,6 @@
+from app.extensions import db  # 从 extensions 导入 db
+from werkzeug.security import generate_password_hash, check_password_hash # 导入哈希函数
+
 class User(db.Model):
     __tablename__ = 'users'
 

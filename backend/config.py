@@ -1,21 +1,24 @@
+import os # ensure os is imported
 from dotenv import load_dotenv
 
 load_dotenv()
 
-import os
+# Define the base directory of the backend application
+BASE_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__))) # Adjust if your config.py is elsewhere
+# Define the path to the ABI file relative to the base directory
+ABI_FILE_PATH = os.path.join(BASE_DIR, '..', 'blockchain', 'build', 'contracts', 'UrbanDevelopment.json')
+
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'your_default_secret_key'
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///site.db'
+    # ... existing config variables ...
+    SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'your-default-secret-key'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///app.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'your-default-jwt-secret-key'
 
-    # Blockchain configuration
-    BLOCKCHAIN_PROVIDER_URL = os.environ.get('BLOCKCHAIN_PROVIDER_URL') or 'https://polygon-rpc.com'
-    CONTRACT_ADDRESS = os.environ.get('CONTRACT_ADDRESS') or '0xYourDeployedContractAddress'
-    PRIVATE_KEY = os.environ.get('PRIVATE_KEY') or 'your_private_key_here'
-    DEPLOYER_ADDRESS = os.environ.get('DEPLOYER_ADDRESS') or '0xYourDeployAddress'
-    # Path to compiled contract ABI
-    CONTRACT_ABI_PATH = os.environ.get('CONTRACT_ABI_PATH') or \
-        os.path.join(os.path.dirname(__file__), '..', '..', 'blockchain', 'build', 'contracts', 'UrbanDevelopment.json')
-    JWT_SECRET_KEY = SECRET_KEY  # Use SECRET_KEY for JWT auth
+    # Blockchain Config
+    AMOY_RPC_URL = os.environ.get('AMOY_RPC_URL')
+    CONTRACT_ADDRESS = os.environ.get('CONTRACT_ADDRESS')
+    CONTRACT_ABI_PATH = ABI_FILE_PATH
+    # Optional: Load backend wallet key if needed for sending transactions
+    BACKEND_WALLET_PRIVATE_KEY = os.environ.get('BACKEND_WALLET_PRIVATE_KEY')

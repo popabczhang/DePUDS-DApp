@@ -1,1 +1,5 @@
-// This file is intentionally left blank.
+const UrbanDevelopment = artifacts.require("UrbanDevelopment");
+
+module.exports = function (deployer) {
+  deployer.deploy(UrbanDevelopment);
+};

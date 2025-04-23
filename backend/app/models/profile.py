@@ -1,9 +1,7 @@
-# filepath: backend/app/models/profile.py
 from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
-from . import User, db
+from app.extensions import db  # 从 extensions 导入 db
 
-# Profile model to store user encrypted demographic data and wallet address
+# Profile 模型用于存储用户加密的人口统计数据和钱包地址
 class Profile(db.Model):
     __tablename__ = 'profiles'
 
